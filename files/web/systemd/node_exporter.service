@@ -1,0 +1,17 @@
+[Unit]
+Description=Prometheus Node Exporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=node_exporter
+Group=node_exporter
+ExecStart=/usr/local/bin/node_exporter \
+  --collector.systemd \
+  --collector.systemd.unit-include='(prometheus|grafana-server|docker|alertmanager)\.service'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
