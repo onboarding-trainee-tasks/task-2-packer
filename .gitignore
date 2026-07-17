@@ -1,0 +1,19 @@
+# Local Packer variable files
+env/*.pkrvars.hcl
+!env/*.pkrvars.hcl.example
+
+# Packer output
+output/*
+!output/.gitkeep
+
+# Local Packer state and crash files
+packer_cache/
+crash.log
+*.log
+
+# OS/editor files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.dbbastion.pkrvars.hcl
+web.pkrvars.hcl
