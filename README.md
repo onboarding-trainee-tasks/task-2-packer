@@ -49,6 +49,18 @@ packer build -var-file=web.pkrvars.hcl web.pkr.hcl
 Do not run `packer build .`: the directory contains three separate builds and
 some variables have the same names.
 
+## GitHub Actions CI/CD
+
+The Packer workflow supports:
+
+- **Pull requests to `main`:** Formatting checks and syntax-only validation of all three AMI templates.
+- **Manual build:** Selects one AMI (`bastion`, `llm` or `web`) and its version, performs full validation and builds the image in AWS.
+
+The build uses GitHub OIDC authentication and the `T2-build` GitHub Environment. No static AWS access keys are required in GitHub.
+
+The resulting AMI ID is available in the workflow logs. To use a new image, manually update the corresponding AMI variable in `task-2-infra`.
+
+
 ## After the build
 
 Copy the three AMI IDs printed by Packer into the matching variables in
