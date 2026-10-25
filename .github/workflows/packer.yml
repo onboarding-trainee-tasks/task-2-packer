@@ -1,0 +1,104 @@
+name: T2 Packer CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Select the AMI to build
+        required: true
+        type: choice
+        options:
+          - bastion
+          - llm
+          - web
+      image_version:
+        description: Version label for the new AMI
+        required: true
+        type: string
+        default: "1.0.1"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Packer Template Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@v3
+
+      - name: Check Packer formatting
+        run: packer fmt -check .
+
+      - name: Validate templates without AWS credentials
+        run: |
+          for image in bastion llm web; do
+            packer init "${image}.pkr.hcl"
+            packer validate -syntax-only \
+              -var-file="${image}.pkrvars.hcl" \
+              "${image}.pkr.hcl"
+          done
+
+  build:
+    name: Build selected AMI
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: T2-build
+    concurrency:
+      group: t2-packer-build
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      IMAGE: ${{ inputs.image }}
+      IMAGE_VERSION: ${{ inputs.image_version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@v3
+
+      - name: Authenticate to AWS through OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.PACKER_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: t2-packer-${{ github.run_id }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Packer init
+        run: packer init "${IMAGE}.pkr.hcl"
+
+      - name: Full Packer validation
+        run: >-
+          packer validate
+          -var-file="${IMAGE}.pkrvars.hcl"
+          -var "image_version=${IMAGE_VERSION}"
+          "${IMAGE}.pkr.hcl"
+
+      - name: Build AMI
+        run: >-
+          packer build
+          -var-file="${IMAGE}.pkrvars.hcl"
+          -var "image_version=${IMAGE_VERSION}"
+          "${IMAGE}.pkr.hcl"
+
+      - name: Summarize build
+        run: |
+          echo "## T2 Packer build" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image: ${IMAGE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Version: ${IMAGE_VERSION}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Find the new AMI ID in the preceding Packer build log." >> "$GITHUB_STEP_SUMMARY"

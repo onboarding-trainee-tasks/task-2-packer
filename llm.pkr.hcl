@@ -21,7 +21,7 @@ source "amazon-ebs" "llm" {
   instance_type = "t3.small"
 
   ssh_username = "ubuntu"
-  
+
   associate_public_ip_address = true
 
   temporary_security_group_source_public_ip = true

@@ -21,7 +21,7 @@ source "amazon-ebs" "bastion" {
   instance_type = "t3.micro"
   ssh_username  = "ubuntu"
 
-  associate_public_ip_address = true
+  associate_public_ip_address               = true
   temporary_security_group_source_public_ip = true
 
   ami_name = "llm-test-bastion-${var.image_version}-{{timestamp}}"
